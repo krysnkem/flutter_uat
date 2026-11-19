@@ -183,6 +183,13 @@ Every number comes from one developer's machine (macOS, Android API 30/35 emulat
 
 `SLA.md`, copied by `install-skill`, lists the conditions each promise holds under.
 
+## Acknowledgements
+
+The emulator helper (`emu.sh`) and the agent guide (`SKILL.md`) in this package began as work shared
+personally by **David Adegoke** (Cake Wallet). This package extends and rewrites them (the CLI, flows,
+sweeps, selectors, reports and the other scripts are additions), but the starting point is his, and the credit
+is his. See `NOTICE`.
+
 ## License
 
 See `LICENSE`.
