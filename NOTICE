@@ -1,14 +1,11 @@
 flutter_uat
 ===========
 
-Portions of this package are derived from work shared personally by David Adegoke (Cake Wallet):
+Acknowledgement
+---------------
+The emulator helper (lib/src/assets/scripts/emu.sh) and the agent guide (lib/src/assets/skill/SKILL.md)
+began as work shared personally by David Adegoke (Cake Wallet). Credit for that starting point is his.
 
-  - lib/src/assets/scripts/emu.sh      (emulator helper: list, start, stop)
-  - lib/src/assets/skill/SKILL.md      (the agent guide)
-
-They were then extended and rewritten for this package. The remaining scripts, the Dart command-line
-front end, the tests and the documentation are additions made here.
-
-The MIT License in the LICENSE file covers the additions made in this package. The original work was
-shared as a personal share and its terms of reuse are the author's to state: see the project repository for
-the status of his permission before reusing or redistributing the derived files.
+Everything else in this package is the work of the flutter_uat authors: the Dart command-line front end,
+the other scripts, the selectors, flows, sweeps and reports, the tests and the documentation, and the
+extensions and rewrites made to the two files above. The MIT License in the LICENSE file applies to it.

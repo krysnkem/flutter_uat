@@ -1,6 +1,6 @@
 ## 0.1.1
 
-- Credit: `emu.sh` and `SKILL.md` began as work shared personally by David Adegoke (Cake Wallet); added an
+- Acknowledgement: `emu.sh` and `SKILL.md` began as work shared personally by David Adegoke (Cake Wallet); added an
   Acknowledgements section, a `NOTICE` file and source headers.
 
 - `emu create NAME` makes a throwaway AVD from an installed `google_apis` image (it refuses an existing
