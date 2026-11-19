@@ -43,6 +43,10 @@ It reads the app's accessibility tree through `adb`: text out, an exit code you 
 `taplabel 'id:save||Save||class:Button' --nth 1`: tries a `Semantics(identifier:)` id, then the label, then the
 class and position, and says which. Unlabeled fields/icons: `class:EditText --nth N`, `class:Button --nth N`
 (`unlabeled` lists them). Overlaps: `--at top|bottom`. Last resort: `tap X Y` from the same read.
+- `--exact` matches the WHOLE label ("Explore Tab 2 of 4", not "Explore"); otherwise matching is a substring.
+- `class:EditText --nth N` shifts: a filled field gets a label and leaves the unlabeled list, and layouts move after a pick.
+  Re-run `unlabeled` after each fill, or take `--nth 1` repeatedly. `--expect` on an off-screen label fails after the wait.
+  `[selected]` shown in `labels` is not matchable by `assert`.
 
 ## Flow file
 One command per line, no `flutter_uat` prefix. `?` = optional step, `!` = must fail, `set K=V` / `${K}`.

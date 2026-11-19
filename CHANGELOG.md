@@ -5,6 +5,8 @@
 - Found by a cold agent that used only the short guide on a prebuilt APK, now fixed:
   the guide lists the default unsafe terms; says `clear` is denied in flows and how to allow it; says how to use a
   prebuilt APK; and warns that `--until` in an optional step waits the full time when the target is absent.
+- A second cold run (about 24% fewer tokens than the full guide) added: `--exact` is the whole label, `class:EditText --nth`
+  shifts, off-screen `--expect` fails.
 - `repeat --allow-clear` passes the flag to each flow; its per-run progress line now includes the failing step.
 - `doctor` no longer suggests bootstrapping when you only have an APK.
 
