@@ -594,6 +594,8 @@ EOF
     fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' 2>/dev/null | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
     echo "foreground: $fg"
     echo "host load: $(uptime | sed -E 's/.*averages?: ([0-9.]+).*/\1/') (timings and ANRs are meaningless above ~8)"
+    sw="$(sysctl -n vm.swapusage 2>/dev/null | awk '{gsub(/M/,""); if ($3>0) printf "%d", 100*$6/$3}')"
+    [ -n "$sw" ] && echo "swap used: ${sw}% (above ~80% the emulator slows even when load is calm)"
     if [ -n "$(resolve_pkg)" ] && [ "$fg" != "$(resolve_pkg)" ]; then
       echo "FAIL: foreground is '$fg', not the app under test. Run 'launch' (or open it) first."; exit 1
     fi

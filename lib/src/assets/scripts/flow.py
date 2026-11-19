@@ -50,6 +50,24 @@ def uat(args, timeout=120):
         return 124, "TIMEOUT"
 
 
+def swap_pct():
+    """Percent of swap in use (macOS sysctl, Linux /proc/meminfo); None if unknown. Heavy swapping slows the
+    emulator even when the load average looks calm."""
+    try:
+        out = subprocess.run(["sysctl", "-n", "vm.swapusage"], capture_output=True, text=True).stdout
+        m = re.search(r"total = ([0-9.]+)M\s+used = ([0-9.]+)M", out)
+        if m and float(m.group(1)) > 0:
+            return 100 * float(m.group(2)) / float(m.group(1))
+    except Exception:
+        pass
+    try:
+        mi = dict(l.split(":", 1) for l in open("/proc/meminfo"))
+        t, f = int(mi["SwapTotal"].split()[0]), int(mi["SwapFree"].split()[0])
+        return 100 * (t - f) / t if t else None
+    except Exception:
+        return None
+
+
 def load():
     out = subprocess.run("uptime", capture_output=True, text=True).stdout
     m = re.search(r"averages?: ([0-9.]+)", out)
@@ -112,7 +130,7 @@ opt_failed = sum(1 for r in rows if r[2] == "OPTIONAL-FAIL")
 out = [f"# flow: {title}", "",
        f"- result: **{'PASS' if failed_required == 0 else 'FAIL'}**  ({p}/{len(rows)} steps passed, {failed_required} required failed"
        + (f", {opt_failed} OPTIONAL step(s) did not pass: that path was NOT exercised" if opt_failed else "") + ")",
-       f"- duration {time.time() - t_all:.0f}s, host load {l0} -> {load()} (above ~8 timings are not app findings)", "",
+       f"- duration {time.time() - t_all:.0f}s, host load {l0} -> {load()}, swap used {(lambda s: '?' if s is None else f'{s:.0f}%')(swap_pct())} (above ~8 load or ~80% swap timings are not app findings)", "",
        "| # | step | result | observed | time |", "|---|---|---|---|---|"]
 for n, line, st, obs, t in rows:
     out.append(f"| {n} | `{line[:70]}` | {st} | {obs.replace('|', '/')} | {t} |")

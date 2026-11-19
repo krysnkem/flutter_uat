@@ -435,6 +435,12 @@ formatted value ("808 012 3456"), which can be asserted.
 
 ## Host health (measure before you trust a timing)
 
+**Swap matters as much as load (measured 2026-11-19).** A re-run of the same seven flows went from 21/21 to 15/21 with
+2-3x slower steps while `uptime` showed a calm load (5-7) but swap was 94% used (13.6 of 14.3 GB). `doctor` now prints
+`swap used`, and `flow` and `repeat` report it; above about 80% treat failures and timings as environment, free memory
+(close apps, stop other emulators) and re-run. This is the likely cause, not proven: per-run swap was not logged in the
+failing run.
+
 The emulator shares the host CPU. At host load average ~35 (Spotlight, WindowServer) the
 app hit "sample app E isn't responding" during startup and dumps took 12-21 s, versus a steady
 ~2 s at load < 8. `doctor` prints the load. If it is high, wait; do not record failures

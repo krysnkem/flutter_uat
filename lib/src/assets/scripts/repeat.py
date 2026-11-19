@@ -29,12 +29,33 @@ def load():
     return float(m.group(1)) if m else 0.0
 
 
+def swap_pct():
+    """Percent of swap in use (macOS sysctl, Linux /proc/meminfo); None if unknown. Heavy swapping slows the
+    emulator even when the load average looks calm."""
+    try:
+        out = subprocess.run(["sysctl", "-n", "vm.swapusage"], capture_output=True, text=True).stdout
+        m = re.search(r"total = ([0-9.]+)M\s+used = ([0-9.]+)M", out)
+        if m and float(m.group(1)) > 0:
+            return 100 * float(m.group(2)) / float(m.group(1))
+    except Exception:
+        pass
+    try:
+        mi = dict(l.split(":", 1) for l in open("/proc/meminfo"))
+        t, f = int(mi["SwapTotal"].split()[0]), int(mi["SwapFree"].split()[0])
+        return 100 * (t - f) / t if t else None
+    except Exception:
+        return None
+
+
 def wait_calm():
     for _ in range(18):
         if load() < calm: return
         time.sleep(10)
 
 
+_sp = swap_pct()
+if _sp is not None and _sp > 80:
+    print(f"WARNING: swap is {_sp:.0f}% used: expect a slow emulator and flaky timings that are not app findings.", file=sys.stderr, flush=True)
 rows, allok = [], True
 for f in flows:
     res = []
@@ -59,7 +80,10 @@ L = [f"# flutter-uat repeat: {n} run(s) per flow", "",
 for name, p, t, med, lo, hi, bad in rows:
     L.append(f"| {name} | {p}/{t} | {med:.0f}s | {lo:.0f}-{hi:.0f}s | {(bad[0] if bad else '-').replace('|', '/')} |")
 tp, tt = sum(r[1] for r in rows), sum(r[2] for r in rows)
-L += ["", f"**{tp}/{tt} runs passed ({100 * tp // max(tt, 1)}%)**   host load now {load():.1f}"]
+sp = swap_pct()
+L += ["", f"**{tp}/{tt} runs passed ({100 * tp // max(tt, 1)}%)**   host load now {load():.1f}   swap used {'?' if sp is None else f'{sp:.0f}%'}"]
+if sp is not None and sp > 80:
+    L += ["", f"WARNING: swap was {sp:.0f}% used: the emulator slows down under memory pressure even when load looks calm, so timings and failures here are NOT app findings. Close other apps and re-run."]
 text = "\n".join(L)
 print(text)
 if report:

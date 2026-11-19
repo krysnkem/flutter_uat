@@ -11,6 +11,8 @@
   `repeat` prints a progress line per run to stderr.
 - No more `tr: Broken pipe` noise; the guide documents `find` exit codes, weak `--expect` substrings,
   `waitfor` failure labels, a logout recipe and the `uat.sh` to `flutter_uat` naming.
+- `doctor` prints swap use, and `flow` and `repeat` report it and warn above 80%: a re-run went 21/21 to 15/21 with
+  calm load but 94% swap.
 - Offline script suite: 63 checks.
 
 ## 0.1.0
