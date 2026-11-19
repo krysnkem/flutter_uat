@@ -21,6 +21,13 @@ void main() {
     expect(out.trim(), packageVersion);
   });
 
+  test('packageVersion matches pubspec.yaml', () {
+    final line = File('pubspec.yaml')
+        .readAsLinesSync()
+        .firstWhere((l) => l.startsWith('version:'));
+    expect(line.split(':').last.trim(), packageVersion);
+  });
+
   test('no arguments prints usage and exits 2', () async {
     final (code, out, _) = await run([]);
     expect(code, 2);
