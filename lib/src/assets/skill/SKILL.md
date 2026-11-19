@@ -10,7 +10,7 @@ description: >
 
 # flutter-uat: label-driven touch navigation
 
-> Began as an agent guide shared by David Adegoke (Cake Wallet); extended for flutter_uat. See NOTICE.
+> Inspired by an agent guide shared by David Adegoke (Cake Wallet). See NOTICE.
 
 Tool: `flutter_uat` (plain bash + adb + python3). Pass the device and package on every call:
 `flutter_uat -s emulator-5554 -p com.example.app <command>`. In a shell, wrap it in a function

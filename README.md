@@ -185,10 +185,9 @@ Every number comes from one developer's machine (macOS, Android API 30/35 emulat
 
 ## Acknowledgements
 
-The emulator helper (`emu.sh`) and the agent guide (`SKILL.md`) began as work shared personally by
-**David Adegoke** (Cake Wallet). Credit for that starting point is his. Everything else here (the
-command-line front end, the other scripts, selectors, flows, sweeps, reports, tests and docs) was built
-by the flutter_uat authors. See `NOTICE`.
+flutter_uat was inspired by **David Adegoke** (Cake Wallet), who shared an emulator helper and an agent
+guide personally. Credit for that inspiration is his. The package itself is the work of the flutter_uat
+authors. See `NOTICE`.
 
 ## License
 

@@ -1,8 +1,7 @@
 ## 0.1.1
 
-- Acknowledgement: `emu.sh` and `SKILL.md` began as work shared personally by David Adegoke (Cake Wallet); added an
-  Acknowledgements section, a `NOTICE` file and source headers.
-
+- Acknowledgement: flutter_uat was inspired by David Adegoke (Cake Wallet); added an Acknowledgements
+  section and a `NOTICE` file.
 - `emu create NAME` makes a throwaway AVD from an installed `google_apis` image (it refuses an existing
   name); `emu delete NAME` removes only AVDs this tool created. The unknown-AVD error now points at it.
 - `build` explains a Gradle-too-old-for-this-Flutter failure and lists installed SDKs for `--sdk`

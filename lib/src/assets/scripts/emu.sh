@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Began as an emulator helper shared by David Adegoke (Cake Wallet); extended for flutter_uat. See NOTICE.
+# Inspired by an emulator helper shared by David Adegoke (Cake Wallet). See NOTICE.
 # flutter-uat emu: boot and stop Android emulators WITHOUT touching ones this tool did not start.
 #
 #   emu.sh list
