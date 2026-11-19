@@ -10,9 +10,6 @@ description: >
 
 # flutter-uat: label-driven touch navigation
 
-> In the `flutter_uat` Dart package the command is `flutter_uat`; every `uat.sh` below means the same entry point
-> (`flutter_uat -s SERIAL -p PKG <command>`).
-
 Tool: `flutter_uat` (plain bash + adb + python3). Pass the device and package on every call:
 `flutter_uat -s emulator-5554 -p com.example.app <command>`. In a shell, wrap it in a function
 (`u(){ flutter_uat -s SERIAL -p PKG "$@"; }`); a `U="flutter_uat -s ..."` variable does not work under zsh.
@@ -41,7 +38,7 @@ Service levels (measured timings), known limits and the proposed `.uat` bootstra
 
 ## Bootstrap (once per project, repeat when `--check` says STALE)
 
-`uat.sh bootstrap` prints what it discovers (package, flavors, SDK pin vs installed, Dart
+`flutter_uat bootstrap` prints what it discovers (package, flavors, SDK pin vs installed, Dart
 minimum, AGP/Gradle/Kotlin, route count and hash, mock/e2e dart-defines, Makefile targets,
 AVDs) plus host checks C1 (load below the user's limit, default 8) and C5 (free disk above the hard stop, default 5 GiB; set via `host-hygiene.sh config`), and the `.uat` block it would
 write. It changes nothing. `bootstrap --write` refreshes only its generated block; your own
@@ -51,7 +48,7 @@ recipes and `unsafe=` labels are never guessed. A `skip.Cn=` line without a reas
 
 ## Build and emulator lifecycle (tested 2026-11-17)
 
-- `uat.sh build [debug|release] [--flavor F] [-t FILE] [--define K=V] [--install]`: uses the SDK from
+- `flutter_uat build [debug|release] [--flavor F] [-t FILE] [--define K=V] [--install]`: uses the SDK from
   `bootstrap --sdk`; defaults from `.uat` (`build.flavor= build.target= build.define=A=1,B=2
   build.args=` and `floor.disk_gib=`, default 5). It REFUSES (exit 7) below the disk floor and
   (exit 6) when bootstrap reports a toolchain measured to fail (sample app C AGP 7.3 on Flutter >= 3.35;
@@ -59,9 +56,9 @@ recipes and `unsafe=` labels are never guessed. A `skip.Cn=` line without a reas
   tracked files the tooling rewrote, only those that were clean before (your own uncommitted edits
   are kept: verified on sample app B). On failure it prints the log tail plus a hint (pinned SDK not
   installed; installed SDKs; `--sdk PATH`).
-- `uat.sh build --clean [--yes]` removes ONLY the output dirs this tool created (`build`,
+- `flutter_uat build --clean [--yes]` removes ONLY the output dirs this tool created (`build`,
   `.dart_tool`, `android/.gradle`), after `git check-ignore`; dry-run without `--yes`.
-- `uat.sh emu list | start AVD|--role R [--port N] [--wipe] | stop SERIAL`: `start` boots with
+- `flutter_uat emu list | start AVD|--role R [--port N] [--wipe] | stop SERIAL`: `start` boots with
   `-no-snapshot-load`, waits for boot (21 s at load ~4), sets animations off, and never starts a
   second copy of a running AVD. `stop` refuses an emulator this tool did not start (exit 3) unless
   `--force`; stale registry entries are pruned by pid. `.uat`: `avd.NAME=` + `role.NAME=emulator-NNNN`.
@@ -75,7 +72,7 @@ recipes and `unsafe=` labels are never guessed. A `skip.Cn=` line without a reas
 ```
 name: Login then tabs                  # title for the report
 set EMAIL=test@bank.com                # variable, used as ${EMAIL}
-stop                                   # a line is a uat.sh subcommand WITHOUT the "uat.sh" prefix
+stop                                   # a line is a subcommand WITHOUT the "flutter_uat" prefix
 launch
 waitfor "Welcome Back" 40
 ? taplabel Login --exact               # "?" = optional: use it for a sign-in that may already be done
@@ -83,13 +80,28 @@ typein class:EditText --nth 1 ${EMAIL} # unlabeled field, by class and position
 taplabel "My Savings" --expect "Total Savings" --wait 10
 ! assert "Error"                       # "!" = must FAIL (absent)
 ```
-Run: `uat.sh -s SERIAL -p PKG flow FILE` and `uat.sh -s SERIAL -p PKG repeat 3 FILE...` (the global `-s`/`-p` go BEFORE
+Run: `flutter_uat -s SERIAL -p PKG flow FILE` and `flutter_uat -s SERIAL -p PKG repeat 3 FILE...` (the global `-s`/`-p` go BEFORE
 `flow`/`repeat`). `repeat` prints a table of pass counts, median and min-max time and the first failing step; it waits for
 host load < 8 before every run, and 3 runs of a 4-flow set take over 5 minutes (past a 3-minute tool limit: run it in the
 background). Comment lines do not count as steps. `--force` on a `taplabel` is allowed inside a flow (needed for a Logout).
 Start state: the app keeps its session across `stop`/`launch`, so decide per flow whether it can assume signed-in or
-signed-out; make the sign-in steps optional (`?`) when either can occur. In a shell variable `U="uat.sh -s ..."` does not
-work under zsh: use a function (`u(){ uat.sh -s SERIAL -p PKG "$@"; }`).
+signed-out; make the sign-in steps optional (`?`) when either can occur. In a shell variable `U="flutter_uat -s ..."` does not
+work under zsh: use a function (`u(){ flutter_uat -s SERIAL -p PKG "$@"; }`).
+Pitfalls measured by agents writing flows cold:
+- **Substring matching makes weak checks.** `--expect "Plan"` and `assert "Create"` pass when the word is already on screen
+  (a title, the previous screen). Expect the most specific label of the NEXT screen.
+- **`waitfor "A|B"` is not "either".** Extra arguments after the seconds are FAILURE labels (a branch check). For "either",
+  use two optional steps or a check that fits both.
+- **A PASS can hide a skipped path.** The result line now says how many optional (`?`) steps did not pass; read it. An
+  optional sign-in or logout that failed means that path was not exercised.
+- **Logging out to test login:** `? taplabel Logout --exact --force` then `waitfor "Login" 15` (a Logout label is refused
+  without `--force`). The session persists across `stop`/`launch`, so decide per flow whether it starts signed in.
+- **A tap can change tabs silently** ("View All" on a dashboard switches tabs), so a following `back` may leave the app (exit 4).
+  Assert the screen you expect before going back.
+- **Positions of later fields shift** after earlier ones are filled (`typein ... --nth 3` taps a different y each run);
+  it still resolves to the same field.
+- `repeat` prints a progress line per run to stderr (`[flow run 2/3] PASS 41s`) and the table at the end; `flow --quiet`
+  prints only the result line and the failing or optional-failed steps.
 `find LABEL` lists matches and exits 0 even when there are none (it prints nothing), so a `find` step passes vacuously.
 Use `assert LABEL` (exit 1 if absent) or `waitfor LABEL SECS` as the check. On a root screen `backbtn`/`back` leaves the app
 (exit 4), so write it as `? back` in a flow.
@@ -124,13 +136,13 @@ are project facts: put them in the project's own docs, not in this skill.
 
 ## Flows, typed input and exact coverage (added 2026-11-17; each tested live on sample app A rider mock, API 30)
 
-- **`uat.sh flow FILE [--keep-going]`**: a scripted scenario, one `uat.sh` command per line, with `set K=V`
+- **`flutter_uat flow FILE [--keep-going]`**: a scripted scenario, one `flutter_uat` command per line, with `set K=V`
   / `${K}` / `${env:NAME}`, `? step` (optional), `! step` (must FAIL, e.g. `! assert "Log Out"`), and
   `recover:` lines run once (then the step retried once) when a step exits 4 or 5. Stops at the first failed
   required step unless `--keep-going`. `raw`, `build`, `emu`, `walk` are refused inside a flow; `clear` needs
   `--allow-clear`. Writes a markdown report with the observed output per step. Example:
   `example/login.flow` in the package is a generic starting point. The agent writes the flow.
-- **`uat.sh walk --fill`**: also types test data into text fields (type guessed from the field label and the
+- **`flutter_uat walk --fill`**: also types test data into text fields (type guessed from the field label and the
   label above it: email, phone, password, amount, otp, name, else text; override with `.uat` `fill.email=` etc.).
   REFUSED (exit 3) unless `.uat` says `fill.allow=mock` or `sandbox`: submitting forms can create real data.
   Measured: it typed into profile and password forms and saved a mock profile. `typein ... --replace` clears
@@ -138,7 +150,7 @@ are project facts: put them in the project's own docs, not in this skill.
 - **An app with no router** (`MaterialApp(home: ...)`) has no routes: `bootstrap` reports `routes: 0`. Skip the hooks, `jump` and `sweep`; drive it with flows and `walk` (measured by reading an app that was a single Library screen: nothing here applies).
 - **Route hook (changes app code: `flutter_uat install-hooks` copies `uat_route_observer.dart` and `uat_jump.dart` into `lib/uat/`; add
   `UatRouteObserver()` to the router `observers:`; tab bodies need it in each `StatefulShellBranch`).** Build
-  with `--define UAT_ROUTES=true` (inert otherwise). `uat.sh routes` harvests `UAT_ROUTE class=...` lines from
+  with `--define UAT_ROUTES=true` (inert otherwise). `flutter_uat routes` harvests `UAT_ROUTE class=...` lines from
   logcat; `coverage` then counts those screens EXACTLY and flags screens counted only from label guesses.
   Measured: the first hook logged go_router's `Builder` wrapper, so it now finds the first `*Screen`/`*Page`
   widget under the route. The label guess had a false positive (`PrivacyPolicyScreen`, a link text, never opened).
@@ -150,13 +162,13 @@ are project facts: put them in the project's own docs, not in this skill.
 
 ### Route jump (reach screens a walk cannot)
 
-`uat.sh jump /route/path` asks the app to `go()` straight to a route. Needs the `uat_jump.dart` hook from `install-hooks`
+`flutter_uat jump /route/path` asks the app to `go()` straight to a route. Needs the `uat_jump.dart` hook from `install-hooks`
 (call `UatJump.start(navigatorKey)` in `main()`) and a `UAT_ROUTES=true` debug build; the command is
 passed through `run-as` into the app's cache dir, so release builds and non-debuggable APKs cannot be
 driven this way. Replies `UAT_JUMP path=... result=ok`. Measured on sample app A rider (mock backend,
 signed in): 45 routes jumped, 40 opened, 33 distinct screen classes confirmed by the route log.
 Routes whose builder reads `state.extra` open blank (expected: the tool cannot supply the object).
-`uat.sh sweep [--match SUBSTR] [--paths FILE] [--list] [--no-recheck] [--gap REGEX] [--unlabeled]` jumps to every route
+`flutter_uat sweep [--match SUBSTR] [--paths FILE] [--list] [--no-recheck] [--gap REGEX] [--unlabeled]` jumps to every route
 found in the router source (or a paths file), classifies each OPEN / BLANK / ERROR / CRASH / NOJUMP /
 SKIPPED (destructive-looking paths) and re-jumps anything not OPEN alone after a clean relaunch, so a crash
 that needs earlier screens is reported ORDER-DEPENDENT instead of as that route's fault. It also lists log
@@ -167,8 +179,8 @@ Verify a crash by re-jumping alone: one NPE seen in a sweep did not reproduce, s
 
 ### Flows against a mocked backend, and repeat runs
 
-The sample flows (sign-in, wallet, saved places, history, funding, booking, cancel) each start from a cold launch so they are independent. `uat.sh geo LAT LNG` pins the emulator GPS (default is California: fares came out
-as millions). `uat.sh repeat N FLOW...` runs each flow N times at calm host load and reports pass rate,
+The sample flows (sign-in, wallet, saved places, history, funding, booking, cancel) each start from a cold launch so they are independent. `flutter_uat geo LAT LNG` pins the emulator GPS (default is California: fares came out
+as millions). `flutter_uat repeat N FLOW...` runs each flow N times at calm host load and reports pass rate,
 timing and the first failing step. Measured 2026-11-18, API 30 emulator, debug build, in-app mock backend:
 21/21 runs passed (3 each of 7 signed-in flows; sign-in needs a fresh install so it is excluded).
 Same flows on a RELEASE build (R8, signed, mock backend + UAT_ROUTES): 21/21 passed, medians within ~3 s of debug
@@ -179,18 +191,18 @@ cancel flows depend on step latency. Unlabeled controls (rating stars) are reach
 
 ## Regression suite
 
-The package's own test suite (`dart test` in a checkout; the offline script checks live in `test/offline/run.sh`, no device): 59 checks replaying fabricated trees through the tool for the bugs
+The package's own test suite (`dart test` in a checkout; the offline script checks live in `test/offline/run.sh`, no device): 63 checks replaying fabricated trees through the tool for the bugs
 we hit (entities, exact trim, state flags, unlabeled coverage, `--at`, merged, unsafe guard, backbtn,
-waitfor/assert/gone, bootstrap flavors/staleness/skip rule, coverage). Run it after any change to `uat.sh`.
+waitfor/assert/gone, bootstrap flavors/staleness/skip rule, coverage). Run it after any change to `flutter_uat`.
 
 ## Walk (tested 2026-11-17, needs python3)
 
-`uat.sh walk [--taps N] [--depth D] [--minutes M] [--root PROJECT] [--no-restart]` starts from a
+`flutter_uat walk [--taps N] [--depth D] [--minutes M] [--root PROJECT] [--no-restart]` starts from a
 fresh launch, signs in from `.uat`, taps every clickable label once per screen (depth-first), closes
 sheets via Scrim, goes back with `backbtn`, switches bottom tabs, relaunches when it loses its
 place, and writes a markdown report (screens, transitions, refusals, unlabeled controls, merged
 nodes, log errors, coverage). `.uat` keys: `signin.when=LABEL` (run the steps only while that
-label shows), `signin.steps=STEP; ? OPTIONAL STEP` (uat.sh subcommands, shell quoting, `raw`
+label shows), `signin.steps=STEP; ? OPTIONAL STEP` (flutter_uat subcommands, shell quoting, `raw`
 refused), `nag=A,B`, `back.unlabeled=X,Y@WxH`. Destructive labels are refused by the guard.
 Measured on sample app A mock (API 30, host load 10-47): driver 14 taps / 11 screens, coverage 4
 reached; rider 26 taps / 11 screens, coverage 7 reached (13% of routable, lower bound), sign-in with
@@ -201,7 +213,7 @@ tabs made it exit the app twice before the fix); with `--minutes 9` under load t
 ## Coverage (tested 2026-11-17)
 
 Every successful dump of an app records its label set (when it changed) in
-`$TMPDIR/flutter-uat/visits-<package>.log`; `UAT_NO_VISITS=1` turns that off. `uat.sh coverage`
+`$TMPDIR/flutter-uat/visits-<package>.log`; `UAT_NO_VISITS=1` turns that off. `flutter_uat coverage`
 lists the `*Screen`/`*Page` classes the router builds (`--all-screens` for Navigator-only apps),
 derives label literals from each screen's source (own file plus `_partial.dart` siblings; literals
 shared by several screens, code fragments, class-name strings and lowercase fragments are dropped)
@@ -215,13 +227,13 @@ screen was NOT matched: shared text), fixture project exact (2 reached, 1 reason
 
 ## 0. Preconditions (check once per session)
 
-1. Device: `uat.sh devices`. One attached device is auto-picked. With several, pass
+1. Device: `flutter_uat devices`. One attached device is auto-picked. With several, pass
    `-s emulator-5554`, `--role NAME`, or export `ANDROID_SERIAL`. It refuses to guess.
 2. Package: resolved from `-p`, `.uat`, `android/app/build.gradle(.kts)` `applicationId`,
    then the foreground app. Only `launch/stop/clear/link/install` need it.
-3. **`uat.sh doctor`**: confirms the foreground app is the one under test and that a
+3. **`flutter_uat doctor`**: confirms the foreground app is the one under test and that a
    labeled tree exists. A WARN right after launch usually means a text-less splash.
-4. Once per AVD: `uat.sh anims 0` (kills system animations; Flutter's own ~300 ms page
+4. Once per AVD: `flutter_uat anims 0` (kills system animations; Flutter's own ~300 ms page
    transitions remain, `waitfor` absorbs them).
 
 ## Optional per-project config: `.uat` (repo root, plain data)
@@ -352,7 +364,7 @@ shown to be necessary; do not use it as a first move.
 - **Return with the app's own control first:** pushed screens often have a labelled `Back`
   (sample app B) or an UNLABELED header button at a fixed spot (sample app A, always ~(74,206)); system
   `back` works for both but not for modal sheets (see below).
-- **Modal bottom sheets** show as `Scrim` + `Dismiss` (the drag handle). `uat.sh closesheet` closes
+- **Modal bottom sheets** show as `Scrim` + `Dismiss` (the drag handle). `flutter_uat closesheet` closes
   one: Scrim tap, then swipe down the handle, then back (max 2, aborts if the app is left), and says
   which worked. Measured on sample app A's "Set goals" sheet (API 30): Scrim centre/top/bottom taps 8/8
   closed it, with the keyboard shown or hidden; swipe down 1/1; system back needs 1-2 presses (the
@@ -393,7 +405,7 @@ shown to be necessary; do not use it as a first move.
   assumption: verify per app). **`backbtn`**: labeled Back/Navigate up/Close, else `.uat`
   `back.unlabeled=74,206@1080x2400` (scaled; tapped only if an unlabeled control is really
   there), else system back. **`nags`** taps the first present label of `.uat` `nag=A,B`.
-- **Offline replay:** `UAT_XML=saved.xml ADB=echo uat.sh <cmd>` runs read/tap logic against a
+- **Offline replay:** `UAT_XML=saved.xml ADB=echo flutter_uat <cmd>` runs read/tap logic against a
   saved tree with no device (taps are printed, not sent).
 - Live results: guard refused and did not tap; `--expect` verified a transition, and a retry
   re-resolved a layout shift (Continue moved 1865 to 1928 after a validation message);
@@ -415,7 +427,7 @@ shown to be necessary; do not use it as a first move.
 ## Unlabeled interactive controls
 
 `labels` lists only nodes with text/content-desc/hint. Controls with none are invisible
-to it. `uat.sh unlabeled` lists them (`CX CY CLICKABLE <Class>`), and `class:EditText`
+to it. `flutter_uat unlabeled` lists them (`CX CY CLICKABLE <Class>`), and `class:EditText`
 works as a selector everywhere a LABEL does (`typein class:EditText 8012345678`,
 `find class:EditText`, `--nth N` for the second field). Measured: sample app E's phone field
 is an unlabeled `EditText` (flagged NAF) until text is typed, after which it exposes its
@@ -431,7 +443,7 @@ then `key 3`.
 
 ## Keyboard
 
-`key 111` does NOT dismiss the keyboard on the tested image; `uat.sh hidekb` (sends back
+`key 111` does NOT dismiss the keyboard on the tested image; `flutter_uat hidekb` (sends back
 only if the keyboard is shown) does.
 
 ## Reaching unlabeled controls: the tool must work with the app as it is (measured 2026-11-18, sample app A rider, debug, API 30)
@@ -459,7 +471,7 @@ View 8, ImageView 3, CheckBox 1. So about 35 of 47 are already served by `backbt
 remainder is about 12 (View, ImageView, CheckBox). Flow-only screens (a rating sheet during a ride) are not in this
 count: route jump cannot reach them.
 
-**Stability (`uat.sh stability --paths FILE`, re-run with the mock on: 39 readable screens, 45 controls, 12 ambiguous; identical to the first no-mock run on 29 screens; a PROXY: does the
+**Stability (`flutter_uat stability --paths FILE`, re-run with the mock on: 39 readable screens, 45 controls, 12 ambiguous; identical to the first no-mock run on 29 screens; a PROXY: does the
 selector still resolve to the same relative control, not what a tap does).**
 
 | layout change | `class:X --nth` | pixel position (scaled) | nearest-label anchor |

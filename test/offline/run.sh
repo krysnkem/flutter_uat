@@ -52,6 +52,18 @@ eq fallback-none "$($U find 'id:nope||Nothing' 2>/dev/null | wc -l | tr -d ' ')"
 has stability-selftest "$(python3 "$HERE/../../lib/src/assets/scripts/stability.py" --selftest 2>&1)" "selftest ok"
 eq stability-needs-paths "$(python3 "$HERE/../../lib/src/assets/scripts/stability.py" >/dev/null 2>&1; echo $?)" "2"
 
+# flow: a PASS must say when optional steps did not pass, and --quiet trims the report
+tree <<X
+$(n "Present" Button "" true "[0,100][500,200]")
+X
+printf 'name: opt\n? assert "Missing label"\nassert "Present"\n' > "$T/opt.flow"
+fo="$(python3 "$HERE/../../lib/src/assets/scripts/flow.py" "$T/opt.flow" --report "$T/opt.md" 2>&1)"
+has flow-optional-warns "$fo" "OPTIONAL step(s) did not pass"
+has flow-still-pass "$fo" "result: **PASS**"
+fq="$(python3 "$HERE/../../lib/src/assets/scripts/flow.py" "$T/opt.flow" --quiet --report "$T/opt.md" 2>&1)"
+has flow-quiet-keeps-optional-row "$fq" "OPTIONAL-FAIL"
+case "$fq" in *"| PASS |"*) bad "flow-quiet-hides-passing-rows" ;; *) ok ;; esac
+
 # state flags
 tree <<X
 $(n "" View "Rides Tab 2 of 4" true "[0,100][500,200]" true true)

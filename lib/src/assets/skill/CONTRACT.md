@@ -9,8 +9,8 @@ Read SKILL.md for the commands. Everything below is what a delegate must know wi
   only if adb is reachable from the sandbox: (verify) not tested from Codex.
 - **Pass absolute paths and the device:** `-s emulator-NNNN` (or `ANDROID_SERIAL`), `-p PACKAGE`. Run from the
   project root so `.uat` is found. With several devices the tool refuses to guess.
-- **Never touch emulators you did not start:** use `uat.sh emu start/stop`; `stop` refuses others.
-- **Delete what you build:** `uat.sh build --clean --yes` after installing; remove throwaway AVDs.
+- **Never touch emulators you did not start:** use `flutter_uat emu start/stop`; `stop` refuses others.
+- **Delete what you build:** `flutter_uat build --clean --yes` after installing; remove throwaway AVDs.
 - **Destructive labels are refused (exit 3):** Log Out, Delete Account, Pay Now, and `.uat` `unsafe=`.
   `--force` only if the task explicitly requires it.
 - **Reply shape:** a verdict plus observed values (label text, counts), not pasted dumps.

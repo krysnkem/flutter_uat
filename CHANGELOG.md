@@ -7,6 +7,11 @@
 - `install-skill` also copies `SLA.md`.
 - The guide: a first-use order, no dead references to files that do not ship, a note for apps with no router.
 - README leads with instructions for agents, then normal usage.
+- `flow` says how many optional steps did not pass (a PASS can hide a skipped path) and has `--quiet`;
+  `repeat` prints a progress line per run to stderr.
+- No more `tr: Broken pipe` noise; the guide documents `find` exit codes, weak `--expect` substrings,
+  `waitfor` failure labels, a logout recipe and the `uat.sh` to `flutter_uat` naming.
+- Offline script suite: 63 checks.
 
 ## 0.1.0
 

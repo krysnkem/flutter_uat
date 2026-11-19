@@ -49,6 +49,7 @@ for f in flows:
         if not ok:
             m = re.search(r"^\| (\d+) \| `([^`]*)` \| (?:FAIL|ERROR) \| ([^|]*)\|", out, re.M)
             bad = f"step {m.group(1)} `{m.group(2)[:50]}`: {m.group(3).strip()[:60]}" if m else "no report line"
+        print(f"[{os.path.basename(f)} run {k + 1}/{n}] {'PASS' if ok else 'FAIL'} {dt:.0f}s", file=sys.stderr, flush=True)
         res.append((ok, dt, bad))
     passed = sum(1 for r in res if r[0])
     allok &= passed == n

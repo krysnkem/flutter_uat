@@ -29,6 +29,7 @@ ap.add_argument("file")
 ap.add_argument("--keep-going", action="store_true")
 ap.add_argument("--report", default="")
 ap.add_argument("--allow-clear", action="store_true")
+ap.add_argument("--quiet", action="store_true")
 ap.add_argument("--var", action="append", default=[])
 A = ap.parse_args()
 
@@ -107,8 +108,10 @@ for n, line in steps:
 
 uat(["routes"])  # persist screens the app reported (no-op without the route hook)
 p = sum(1 for r in rows if r[2] == "PASS")
+opt_failed = sum(1 for r in rows if r[2] == "OPTIONAL-FAIL")
 out = [f"# flow: {title}", "",
-       f"- result: **{'PASS' if failed_required == 0 else 'FAIL'}**  ({p}/{len(rows)} steps passed, {failed_required} required failed)",
+       f"- result: **{'PASS' if failed_required == 0 else 'FAIL'}**  ({p}/{len(rows)} steps passed, {failed_required} required failed"
+       + (f", {opt_failed} OPTIONAL step(s) did not pass: that path was NOT exercised" if opt_failed else "") + ")",
        f"- duration {time.time() - t_all:.0f}s, host load {l0} -> {load()} (above ~8 timings are not app findings)", "",
        "| # | step | result | observed | time |", "|---|---|---|---|---|"]
 for n, line, st, obs, t in rows:
@@ -117,6 +120,10 @@ text = "\n".join(out)
 path = A.report or os.path.join(os.environ.get("TMPDIR", "/tmp").rstrip("/"), "flutter-uat", "flow-report.md")
 os.makedirs(os.path.dirname(path), exist_ok=True)
 open(path, "w").write(text + "\n")
-print(text)
+if A.quiet:
+    keep = [l for l in out if l.startswith(("# flow", "- result", "- duration")) or "| FAIL |" in l or "| ERROR |" in l or "| OPTIONAL-FAIL |" in l]
+    print("\n".join(keep))
+else:
+    print(text)
 print(f"\nreport: {path}")
 sys.exit(0 if failed_required == 0 else 1)
