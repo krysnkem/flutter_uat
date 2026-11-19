@@ -1,7 +1,11 @@
-## 0.1.1
+## 0.1.2
 
 - Acknowledgement: flutter_uat was inspired by David Adegoke (Cake Wallet); added an Acknowledgements
   section and a `NOTICE` file.
+- No code changes: this release adds the acknowledgement that was missing from 0.1.1.
+
+## 0.1.1
+
 - `emu create NAME` makes a throwaway AVD from an installed `google_apis` image (it refuses an existing
   name); `emu delete NAME` removes only AVDs this tool created. The unknown-AVD error now points at it.
 - `build` explains a Gradle-too-old-for-this-Flutter failure and lists installed SDKs for `--sdk`
