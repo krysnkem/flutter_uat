@@ -113,6 +113,7 @@ void main() {
       contains('flutter-uat'),
     );
     expect(File(p.join(dest, 'CONTRACT.md')).existsSync(), isTrue);
+    expect(File(p.join(dest, 'SLA.md')).existsSync(), isTrue);
   });
 
   test('shipped text carries no personal paths or app names', () async {

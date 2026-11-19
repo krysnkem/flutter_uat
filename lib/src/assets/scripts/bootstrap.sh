@@ -167,6 +167,7 @@ SERIALS=""; [ -n "$ADB" ] && SERIALS="$("$ADB" devices 2>/dev/null | awk 'NR>1 &
 WARN=""
 addw() { WARN="$WARN
   WARN $1"; }
+case "${PIN:-}" in stable|beta|master|main) FLOATPIN=1 ;; *) FLOATPIN=0 ;; esac
 [ -n "$SDKNOTE" ] && addw "$SDKNOTE"
 [ -z "$SDKBIN" ] && addw "no Flutter SDK found (install one or set the pin)"
 [ -z "$APPG" ] && addw "no android/app/build.gradle(.kts): not an Android-capable project"
@@ -176,6 +177,11 @@ if [ -n "$AGP" ] && [ -n "$FV" ] && [ "$(echo "$AGP" | cut -d. -f1)" -lt 8 ] 2>/
 fi
 if [ -n "$DMIN" ] && [ -n "$DV" ] && [ "$(ver_lt "$DV" "$DMIN")" = 1 ]; then
   addw "pubspec needs Dart >= $DMIN but the chosen SDK has Dart $DV (sample app D needed a newer SDK)"
+fi
+# measured: Flutter 3.50.0 refused a project whose Gradle wrapper was 8.14 ("lower than Flutter's minimum supported version of 9.3.1")
+if [ -n "${FV:-}" ] && [ -n "${GRADLE:-}" ] && [ "$(printf '%s\n%s\n' "$FV" 3.50.0 | sort -V | head -1)" = "3.50.0" ] \
+   && [ "$(printf '%s\n%s\n' "$GRADLE" 9.3.1 | sort -V | head -1)" != "9.3.1" ]; then
+  addw "Flutter $FV with Gradle $GRADLE: Flutter 3.50.0 was measured to refuse Gradle 8.14 (needs 9.3.1). ${PIN:+pin '$PIN' floats with the channel; }try an older installed SDK (build --sdk PATH/bin/flutter) or upgrade the wrapper in a copy"
 fi
 [ -z "$ADB" ] && addw "adb not found (set ADB=/path/to/adb)"
 

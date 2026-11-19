@@ -19,7 +19,7 @@ and no change to the app.
 
 ```
 dart pub global activate flutter_uat
-flutter_uat install-skill        # writes SKILL.md + CONTRACT.md to ~/.claude/skills/flutter-uat/
+flutter_uat install-skill        # writes SKILL.md, CONTRACT.md, SLA.md to ~/.claude/skills/flutter-uat/
 flutter_uat doctor               # must report a usable semantics tree for the app under test
 ```
 
@@ -27,6 +27,9 @@ Then **read the installed `SKILL.md`**. It is the full operating guide: every co
 rules that prevent false bugs, how to plan a flow, and what has been measured. This README is the
 short version. For a non-Claude delegate (Codex and others) read `CONTRACT.md` too: it states the
 sandbox the delegate needs.
+
+First use: `flutter_uat emu create NAME`, `emu start NAME --port 5562`, `bootstrap`, `build debug --install`
+(`SKILL.md` has the order and the Flutter-version pitfall), then `doctor`.
 
 Pass the device and package on every call, and run from the project root so `.uat` is found:
 `flutter_uat -s emulator-5554 -p com.example.app <command>`. With several devices the tool refuses
@@ -144,7 +147,7 @@ flutter_uat repeat 3 login.flow tabs.flow            # repeatability: pass count
 | Act | `taplabel`, `typein`, `scrollto`, `slide`, `backbtn`, `tap`, `swipe` |
 | Wait / assert | `waitfor`, `gone`, `assert`, `settle` |
 | Scenarios | `flow`, `repeat N` |
-| Device / app | `emu`, `build`, `install`, `launch`, `stop`, `geo` |
+| Device / app | `emu` (`create`, `start`, `stop`, `delete`), `build`, `install`, `launch`, `stop`, `geo` |
 | Coverage | `walk`, `coverage`, `routes`, `sweep`, `stability` |
 
 System dialogs, tabs, sheets and forms are driven with the same commands.
@@ -178,7 +181,7 @@ Every number comes from one developer's machine (macOS, Android API 30/35 emulat
   display-size change. A proxy measure, one app.
 - Not measured: iOS, physical devices, real backends, Linux hosts.
 
-`SLA.md` (in the package under `lib/src/assets/skill/`) lists the conditions each promise holds under.
+`SLA.md`, copied by `install-skill`, lists the conditions each promise holds under.
 
 ## License
 

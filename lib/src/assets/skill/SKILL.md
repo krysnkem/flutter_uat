@@ -13,9 +13,20 @@ description: >
 > In the `flutter_uat` Dart package the command is `flutter_uat`; every `uat.sh` below means the same entry point
 > (`flutter_uat -s SERIAL -p PKG <command>`).
 
-Tool: `~/.claude/skills/flutter-uat/scripts/uat.sh` (plain bash + adb; non-Claude agents
-call it by that absolute path). Alias it for the session: every call below is
-`uat.sh <cmd>`.
+Tool: `flutter_uat` (plain bash + adb + python3). Pass the device and package on every call:
+`flutter_uat -s emulator-5554 -p com.example.app <command>`. In a shell, wrap it in a function
+(`u(){ flutter_uat -s SERIAL -p PKG "$@"; }`); a `U="flutter_uat -s ..."` variable does not work under zsh.
+
+**First use, in this order** (each step needs the one before it):
+1. An emulator of your own: `flutter_uat emu create uat_a` (makes a throwaway AVD from an installed
+   `google_apis` image; refuses if the name exists), then `flutter_uat emu start uat_a --port 5562`.
+   Delete it when done: `flutter_uat emu stop emulator-5562` then `flutter_uat emu delete uat_a` (only AVDs this tool created).
+2. `flutter_uat bootstrap` in the project root: toolchain, package id, routes. Read its `warnings:` block.
+3. `flutter_uat -s emulator-5562 build debug --install`. If the pin is a floating channel (`.fvmrc` says `stable`) and the
+   project's Gradle is older than that Flutter supports, the build fails (measured: Flutter 3.50.0 refused Gradle 8.14,
+   minimum 9.3.1); rerun with `--sdk /path/to/older/flutter/bin/flutter` (the build prints the installed SDKs).
+4. `flutter_uat launch`, then tap a first-run "Wait"/permission dialog if one appears (a fresh install can ANR once).
+5. `flutter_uat doctor`: it needs the app in front, which is why it comes last.
 
 **Why labels:** `uiautomator dump` exposes Flutter's semantics tree with fresh bounds.
 `taplabel` taps the centre of a node found *now*, so keyboards, layout shifts, different
@@ -26,7 +37,7 @@ genuinely visual checks: layout, icons, theme). Exact values (amounts, codes, ad
 come from `labels` output as strings, never from reading pixels.
 
 Delegating to another agent (Codex etc.): `CONTRACT.md`.
-Service levels (measured timings in section 2b), known limits and the proposed `.uat` bootstrap profile: `SLA.md` (draft).
+Service levels (measured timings), known limits and the proposed `.uat` bootstrap profile: `SLA.md` (draft), copied next to this file by `flutter_uat install-skill`.
 
 ## Bootstrap (once per project, repeat when `--check` says STALE)
 
@@ -115,13 +126,14 @@ are project facts: put them in the project's own docs, not in this skill.
   `recover:` lines run once (then the step retried once) when a step exits 4 or 5. Stops at the first failed
   required step unless `--keep-going`. `raw`, `build`, `emu`, `walk` are refused inside a flow; `clear` needs
   `--allow-clear`. Writes a markdown report with the observed output per step. Example:
-  `examples/app-a_rider_signin.flow` (16 of 17 steps passed, the 17th was optional). The agent writes the flow.
+  `example/login.flow` in the package is a generic starting point. The agent writes the flow.
 - **`uat.sh walk --fill`**: also types test data into text fields (type guessed from the field label and the
   label above it: email, phone, password, amount, otp, name, else text; override with `.uat` `fill.email=` etc.).
   REFUSED (exit 3) unless `.uat` says `fill.allow=mock` or `sandbox`: submitting forms can create real data.
   Measured: it typed into profile and password forms and saved a mock profile. `typein ... --replace` clears
   a field first (without it typein APPENDS to a prefilled value).
-- **Route hook (changes app code: copy `snippets/uat_route_observer.dart` into `lib/` and add
+- **An app with no router** (`MaterialApp(home: ...)`) has no routes: `bootstrap` reports `routes: 0`. Skip the hooks, `jump` and `sweep`; drive it with flows and `walk` (measured by reading an app that was a single Library screen: nothing here applies).
+- **Route hook (changes app code: `flutter_uat install-hooks` copies `uat_route_observer.dart` and `uat_jump.dart` into `lib/uat/`; add
   `UatRouteObserver()` to the router `observers:`; tab bodies need it in each `StatefulShellBranch`).** Build
   with `--define UAT_ROUTES=true` (inert otherwise). `uat.sh routes` harvests `UAT_ROUTE class=...` lines from
   logcat; `coverage` then counts those screens EXACTLY and flags screens counted only from label guesses.
@@ -135,7 +147,7 @@ are project facts: put them in the project's own docs, not in this skill.
 
 ### Route jump (reach screens a walk cannot)
 
-`uat.sh jump /route/path` asks the app to `go()` straight to a route. Needs `snippets/uat_jump.dart`
+`uat.sh jump /route/path` asks the app to `go()` straight to a route. Needs the `uat_jump.dart` hook from `install-hooks`
 (call `UatJump.start(navigatorKey)` in `main()`) and a `UAT_ROUTES=true` debug build; the command is
 passed through `run-as` into the app's cache dir, so release builds and non-debuggable APKs cannot be
 driven this way. Replies `UAT_JUMP path=... result=ok`. Measured on sample app A rider (mock backend,
@@ -164,7 +176,7 @@ cancel flows depend on step latency. Unlabeled controls (rating stars) are reach
 
 ## Regression suite
 
-`tests/run.sh` (offline, no device): 39 checks replaying fabricated trees through the tool for the bugs
+The package's own test suite (`dart test` in a checkout; the offline script checks live in `test/offline/run.sh`, no device): 59 checks replaying fabricated trees through the tool for the bugs
 we hit (entities, exact trim, state flags, unlabeled coverage, `--at`, merged, unsafe guard, backbtn,
 waitfor/assert/gone, bootstrap flavors/staleness/skip rule, coverage). Run it after any change to `uat.sh`.
 
@@ -194,7 +206,7 @@ and reports **reached / not reached / unmatchable**. A screen counts as reached 
 whole-label match or a >= 14-char substring: short words ("Found", "Lagos") matched unrelated
 screens in the first version. So the count is a LOWER BOUND. `.uat` `unreachable.<Class>=reason`
 is printed beside a not-reached screen; `coverage --reset` starts a new walk.
-Measured: sample app A 76 routed (22 unmatchable) vs my earlier manual router count of 83;
+Measured: sample app A 76 routed (22 unmatchable) vs an earlier manual router count of 83;
 sample app E 60 routed, 1 reached after two read-only dumps of different screens (the agent trips
 screen was NOT matched: shared text), fixture project exact (2 reached, 1 reason, 1 unmatchable).
 
@@ -341,7 +353,7 @@ shown to be necessary; do not use it as a first move.
   one: Scrim tap, then swipe down the handle, then back (max 2, aborts if the app is left), and says
   which worked. Measured on sample app A's "Set goals" sheet (API 30): Scrim centre/top/bottom taps 8/8
   closed it, with the keyboard shown or hidden; swipe down 1/1; system back needs 1-2 presses (the
-  first hides the keyboard); `taplabel Dismiss` (the handle) did NOT close it 0/2. My earlier note
+  first hides the keyboard); `taplabel Dismiss` (the handle) did NOT close it 0/2. An earlier note
   that the sheet was undismissable could not be reproduced; the walk's "lost" events there were
   walker bookkeeping (it pressed back on a tab root), now fixed. Only the Scrim step is proven as a
   chain; the swipe and back fallbacks were each tested alone.
@@ -455,7 +467,7 @@ selector still resolve to the same relative control, not what a tap does).**
 | density 560 | 44/45 | 25/45 | 39/45 |
 
 `nth` only breaks when the number of controls of that class changes. Pixel position collapses when the display
-size changes. My nearest-label anchor scored WORSE than `nth`, so it was not built. Part of the reason is structural: two
+size changes. The nearest-label anchor scored WORSE than `nth`, so it was not built. Part of the reason is structural: two
 same-class siblings share the same nearest label, so the anchor cannot tell them apart even on an UNCHANGED
 screen (offline selftest `stability.py --selftest` asserts this: 2 of 3 on identical screens). Caveats: one app, most ambiguous cases are two text fields in a row, one screen (`choose-contact`) was
 unreadable in every pass: jumping there raises a system contacts-permission dialog and the dismissal gave up
@@ -500,7 +512,7 @@ no other step between them. Host load is a real input; the repeat runner's defau
 
 An earlier set of attempts the same day went 0/6 and was wrongly read as a flow regression. Causes, none of them the flows:
 a first cold start of a freshly installed debug app ANRs (do one warm-up launch and tap "Wait" before measuring), host load
-15-30 from other applications, an emulator already disturbed by sweeps and perturbations, and my own flows starting without
+15-30 from other applications, an emulator already disturbed by sweeps and perturbations, and flows that started without
 `launch`. On a fresh AVD with a warm-up, sign-in persisted across `stop`/`launch` and `cancel_ride` passed 21/21 steps.
 `build.define=UAT_ROUTES=true,MOCK_API=true` in `.uat` matters: a build without MOCK_API runs against no backend.
 

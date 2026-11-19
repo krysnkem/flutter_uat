@@ -116,6 +116,11 @@ if [ $rc -ne 0 ]; then
     echo "HINT: the chosen SDK is too old for this project's dependencies. Installed SDKs: $(ls -d "$HOME"/fvm/versions/* "$HOME"/.fvm/versions/* 2>/dev/null | paste -sd' ' -)" >&2
     echo "      rerun with: uat.sh build ... --sdk <that path>/bin/flutter" >&2
   fi
+  if grep -qE "Gradle version .* is lower than Flutter's minimum" "$LOG"; then
+    echo "HINT: this Flutter SDK is newer than the project's Gradle wrapper allows (a floating pin such as 'stable' resolves to today's channel)." >&2
+    echo "      Installed SDKs: $(ls -d "$HOME"/fvm/versions/* "$HOME"/.fvm/versions/* 2>/dev/null | paste -sd' ' -). Try an older one: build ... --sdk <that path>/bin/flutter" >&2
+    echo "      Or upgrade android/gradle/wrapper/gradle-wrapper.properties in a COPY of the app." >&2
+  fi
   pin="$("$BS" 2>/dev/null | grep -oE 'pinned SDK [^ ]+ is not installed' | head -1)"
   [ -n "$pin" ] && echo "HINT: $pin. The project was built for that exact SDK; install it (fvm install <version>) and use --sdk." >&2
   exit 1
