@@ -8,8 +8,7 @@ import 'assets.dart';
 /// (a test enforces it).
 const packageVersion = '0.1.1';
 
-const _usage =
-    '''
+const _usage = '''
 flutter_uat $packageVersion: drive and verify Flutter apps on Android by label.
 
 Usage: flutter_uat [-s SERIAL] [-p PACKAGE] <command> [args]
@@ -73,10 +72,13 @@ Future<int> _passthrough(List<String> args, StringSink err) async {
     'u+x',
     ...Directory(scripts).listSync().map((f) => f.path),
   ]);
-  final proc = await Process.start('bash', [
-    entry,
-    ...args,
-  ], mode: ProcessStartMode.inheritStdio);
+  final proc = await Process.start(
+      'bash',
+      [
+        entry,
+        ...args,
+      ],
+      mode: ProcessStartMode.inheritStdio);
   return proc.exitCode;
 }
 
@@ -103,9 +105,8 @@ int _copyAll(
   StringSink out,
   StringSink err,
 ) {
-  final clash = files.keys
-      .where((n) => File(p.join(dest.path, n)).existsSync())
-      .toList();
+  final clash =
+      files.keys.where((n) => File(p.join(dest.path, n)).existsSync()).toList();
   if (clash.isNotEmpty && !force) {
     err.writeln(
       'refusing to overwrite ${clash.join(', ')} in ${dest.path} '
