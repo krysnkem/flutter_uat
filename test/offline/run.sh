@@ -64,6 +64,15 @@ fq="$(python3 "$HERE/../../lib/src/assets/scripts/flow.py" "$T/opt.flow" --quiet
 has flow-quiet-keeps-optional-row "$fq" "OPTIONAL-FAIL"
 case "$fq" in *"| PASS |"*) bad "flow-quiet-hides-passing-rows" ;; *) ok ;; esac
 
+# taplabel --until: wait-then-tap from one dump; times out with exit 1
+tree <<X
+$(n "Cancel ride" Button "" true "[0,100][500,200]")
+X
+has until-taps "$($U taplabel 'Cancel ride' --until 3 2>&1)" "tap 250 150"
+t0=$(date +%s); $U taplabel 'No such label' --until 2 >/dev/null 2>&1; rc=$?; t1=$(date +%s)
+eq until-timeout-exit "$rc" "1"
+[ $((t1 - t0)) -ge 2 ] && [ $((t1 - t0)) -le 6 ] && ok || bad "until-timeout-took-$((t1 - t0))s"
+
 # state flags
 tree <<X
 $(n "" View "Rides Tab 2 of 4" true "[0,100][500,200]" true true)

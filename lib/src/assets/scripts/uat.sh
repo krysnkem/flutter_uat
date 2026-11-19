@@ -270,7 +270,7 @@ nodes() {
 
 # parse trailing flags: sets F_EXACT F_CLICK F_NTH F_DIR F_MAX, leaves positional args in ARGS
 parse_flags() {
-  F_EXACT=0; F_CLICK=0; F_NTH=1; F_DIR=down; F_MAX=8; F_AT=center; F_FORCE=0; F_REPLACE=0; F_EXPECT=""; F_WAIT=8; ARGS=()
+  F_EXACT=0; F_CLICK=0; F_NTH=1; F_DIR=down; F_MAX=8; F_AT=center; F_FORCE=0; F_REPLACE=0; F_EXPECT=""; F_WAIT=8; F_UNTIL=0; ARGS=()
   while [ $# -gt 0 ]; do
     case "$1" in
       --exact) F_EXACT=1 ;;
@@ -283,6 +283,7 @@ parse_flags() {
       --replace) F_REPLACE=1 ;;
       --expect) F_EXPECT="$2"; shift ;;
       --wait) F_WAIT="$2"; shift ;;
+      --until) F_UNTIL="$2"; shift ;;
       *) ARGS+=("$1") ;;
     esac
     shift
@@ -326,7 +327,7 @@ wait_label() {
 }
 
 tap_match() { # LABEL -> taps Nth match; returns 1 if none
-  dump_ui "$UIXML" || dump_failed
+  dump_ui "$UIXML" || { [ "${F_UNTIL:-0}" -gt 0 ] && return 1; dump_failed; }
   line="$(nodes match "$1" "$F_EXACT" "$F_CLICK" "$F_AT" | sed -n "${F_NTH}p")"
   [ -z "$line" ] && return 1
   if [ "$F_FORCE" != 1 ] && hit="$(unsafe_hit "${line#* * * }")"; then
@@ -350,7 +351,7 @@ READ      labels                       every labeled node: "CX CY CLICKABLE LABE
           find LABEL [--exact] [--clickable]
           dump [FILE]                  raw UI XML
           doctor                       is a usable semantics tree present?
-ACT       taplabel LABEL [--nth N] [--exact] [--clickable] [--at top|bottom]  (merged nodes: center may miss the button)
+ACT       taplabel LABEL [--nth N] [--exact] [--clickable] [--until SECS] [--at top|bottom]  (merged nodes: center may miss the button)
           taplabel ... [--expect LABEL [--wait S]]  verify the next screen; retry the tap once if it is not seen
           taplabel refuses destructive labels (Log out, Delete account, Pay now, .uat unsafe=) unless --force
           typein LABEL TEXT [--replace]  tap the field, then type (--replace clears it first)
@@ -401,7 +402,17 @@ EOF
     nodes match "${ARGS[0]}" "$F_EXACT" "$F_CLICK" "$F_AT" ;;
   taplabel)
     parse_flags "$@"
-    tap_match "${ARGS[0]}" || { echo "no node matching: ${ARGS[0]} (nth $F_NTH)" >&2; exit 1; }
+    if [ "${F_UNTIL:-0}" -gt 0 ]; then
+      # wait-then-tap in ONE step: tap from the same dump that first shows the label, so a short-lived
+      # button (offered for ~12 s) is not lost to the latency of a separate waitfor plus taplabel
+      _end=$(( $(date +%s) + F_UNTIL ))
+      until tap_match "${ARGS[0]}"; do
+        [ "$(date +%s)" -ge "$_end" ] && { echo "TIMEOUT after ${F_UNTIL}s: no node matching: ${ARGS[0]}" >&2; exit 1; }
+        sleep 0.3
+      done
+    else
+      tap_match "${ARGS[0]}" || { echo "no node matching: ${ARGS[0]} (nth $F_NTH)" >&2; exit 1; }
+    fi
     if [ -n "$F_EXPECT" ]; then   # first tap after some transitions is swallowed: verify, retry ONCE
       wait_label "$F_EXPECT" "$F_WAIT"; rc=$?
       if [ $rc = 0 ]; then echo "EXPECT ok: $F_EXPECT"

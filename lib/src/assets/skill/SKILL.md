@@ -435,11 +435,14 @@ formatted value ("808 012 3456"), which can be asserted.
 
 ## Host health (measure before you trust a timing)
 
-**Swap matters as much as load (measured 2026-11-19).** A re-run of the same seven flows went from 21/21 to 15/21 with
-2-3x slower steps while `uptime` showed a calm load (5-7) but swap was 94% used (13.6 of 14.3 GB). `doctor` now prints
-`swap used`, and `flow` and `repeat` report it; above about 80% treat failures and timings as environment, free memory
-(close apps, stop other emulators) and re-run. This is the likely cause, not proven: per-run swap was not logged in the
-failing run.
+**Swap and slow hosts (measured 2026-11-19, NOT a settled cause).** Three re-runs of the same flows on a host with 94-95%
+swap used and a calm load average (3-8) scored 15/21, then 8/16, against 21/21 earlier. Steps were 2-3x slower in the first
+and normal speed in some of the second: one flow passed 4/4 at the same swap level, while others failed scattered across
+unrelated steps (a relaunch timeout, `DUMP-FAILED`, a missing label). So swap correlates with flaky runs here but was not shown
+to be the cause. `doctor` prints `swap used`, and `flow` and `repeat` report it and warn above 80%: treat results taken
+there as unreliable, free memory and re-run before concluding anything about an app. `taplabel --until` was compared live
+against `waitfor` + `taplabel` under those conditions and the result was inconclusive (cancel flow 3/4 vs 4/4, other 0/4 vs 1/4,
+failures at steps unrelated to the windowed button); it is kept because it removes one dump of latency by construction.
 
 The emulator shares the host CPU. At host load average ~35 (Spotlight, WindowServer) the
 app hit "sample app E isn't responding" during startup and dumps took 12-21 s, versus a steady
