@@ -90,6 +90,9 @@ background). Comment lines do not count as steps. `--force` on a `taplabel` is a
 Start state: the app keeps its session across `stop`/`launch`, so decide per flow whether it can assume signed-in or
 signed-out; make the sign-in steps optional (`?`) when either can occur. In a shell variable `U="uat.sh -s ..."` does not
 work under zsh: use a function (`u(){ uat.sh -s SERIAL -p PKG "$@"; }`).
+`find LABEL` lists matches and exits 0 even when there are none (it prints nothing), so a `find` step passes vacuously.
+Use `assert LABEL` (exit 1 if absent) or `waitfor LABEL SECS` as the check. On a root screen `backbtn`/`back` leaves the app
+(exit 4), so write it as `? back` in a flow.
 State flags (`[selected]`, `[checked]`, `[disabled]`) are printed by `labels`/`find` but are NOT matchable: `assert "Tab 1 [selected]"`
 fails by construction (matching reads the label attributes only); assert on content instead.
 The cold test: an agent given only this doc wrote 4 flows for sample app B (prebuilt release APK, mock login) and `repeat 3` passed

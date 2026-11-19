@@ -109,7 +109,7 @@ resolve_pkg() {
   for g in "$root/android/app/build.gradle.kts" "$root/android/app/build.gradle"; do
     [ -f "$g" ] && p="$(grep -E 'applicationId' "$g" | head -1 | sed -E 's/.*["'\'']([A-Za-z0-9_.]+)["'\''].*/\1/')" && [ -n "$p" ] && { echo "$p"; return; }
   done
-  "${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' \
+  "${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' 2>/dev/null \
     | awk '/mResumedActivity|topResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}'
 }
 
@@ -289,7 +289,7 @@ parse_flags() {
   done
 }
 
-screen_size() { "${ADB_S[@]}" shell wm size 2>/dev/null | tr -d '\r' | awk -F'[: x]+' '/Physical size/ {print $3, $4; exit}'; }
+screen_size() { "${ADB_S[@]}" shell wm size 2>/dev/null | tr -d '\r' 2>/dev/null | awk -F'[: x]+' '/Physical size/ {print $3, $4; exit}'; }
 
 # Wraps text for `input text` on the device shell: spaces -> %s, whole thing single-quoted.
 type_text() {
@@ -448,7 +448,7 @@ EOF
     echo "system back"; "${ADB_S[@]}" shell input keyevent 4
     # back on a root screen leaves the app (measured): say so instead of letting the next dump describe the launcher
     sleep 1; pk="$(resolve_pkg)"
-    fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
+    fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' 2>/dev/null | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
     if [ -n "$pk" ] && [ "$fg" != "$pk" ]; then echo "WARN: back left the app (foreground is '$fg'); 'launch' to return" >&2; exit 4; fi ;;
   nags)  # dismiss known nag dialogs listed in .uat as nag=Maybe Later,Not now (nothing is dismissed by default)
     list="$(conf_get nag)"; [ -z "$list" ] && { echo "no nag= in .uat; nothing to dismiss"; exit 0; }
@@ -463,7 +463,7 @@ EOF
   geo)  # geo LAT LNG: set the emulator GPS (emulators only). Default emulator GPS is California.
     [ -n "${1:-}" ] && [ -n "${2:-}" ] || { echo "usage: geo LAT LNG   (e.g. geo 6.5244 3.3792 for Lagos)" >&2; exit 2; }
     case "${ANDROID_SERIAL:-${SERIAL:-}}" in emulator-*) ;; *) "${ADB_S[@]}" get-serialno 2>/dev/null | grep -q '^emulator-' || { echo "geo works on emulators only" >&2; exit 2; } ;; esac
-    "${ADB_S[@]}" emu geo fix "$2" "$1" 2>&1 | tr -d '\r' | head -1; echo "gps set to lat=$1 lng=$2" ;;
+    "${ADB_S[@]}" emu geo fix "$2" "$1" 2>&1 | tr -d '\r' 2>/dev/null | head -1; echo "gps set to lat=$1 lng=$2" ;;
   jump)  # jump PATH: ask the app (snippets/uat_jump.dart, UAT_ROUTES build) to go(PATH); logs UAT_JUMP
     [ -n "${1:-}" ] || { echo "usage: jump /route/path" >&2; exit 2; }
     pk="$(resolve_pkg)"; [ -n "$pk" ] || { echo "no package" >&2; exit 2; }
@@ -472,14 +472,14 @@ EOF
     case "$ra" in *"not debuggable"*) echo "jump needs a debuggable build: this is a release (or non-debuggable) APK. Build debug with --dart-define=UAT_ROUTES=true." >&2; exit 2 ;; esac
     [ -n "$ra" ] && echo "$ra" >&2
     for _ in 1 2 3 4 5 6; do sleep 0.7
-      r="$("${ADB_S[@]}" logcat -d -s flutter 2>/dev/null | tr -d '\r' | grep -o 'UAT_JUMP path=[^ ]* result=.*' | tail -1)"
+      r="$("${ADB_S[@]}" logcat -d -s flutter 2>/dev/null | tr -d '\r' 2>/dev/null | grep -o 'UAT_JUMP path=[^ ]* result=.*' | tail -1)"
       [ -n "$r" ] && { echo "$r"; case "$r" in *result=ok*) exit 0 ;; *) exit 1 ;; esac; }
     done
     echo "no UAT_JUMP reply (is the app running a UAT_ROUTES build with UatJump.start installed?)"; exit 1 ;;
   routes)  # harvest UAT_ROUTE lines (snippets/uat_route_observer.dart, build with UAT_ROUTES=true) from logcat
     rp="$(resolve_pkg)"; rl="$_tmp/flutter-uat/routes-${rp:-app}.log"
     [ "${1:-}" = "--reset" ] && { rm -f "$rl"; "${ADB_S[@]}" logcat -c 2>/dev/null; echo "route log cleared (logcat too)"; exit 0; }
-    "${ADB_S[@]}" logcat -d -s flutter 2>/dev/null | tr -d '\r' | grep -o 'UAT_ROUTE class=[^ ]*' | sed 's/UAT_ROUTE class=//' | grep -vx -- '-' >> "$rl" 2>/dev/null
+    "${ADB_S[@]}" logcat -d -s flutter 2>/dev/null | tr -d '\r' 2>/dev/null | grep -o 'UAT_ROUTE class=[^ ]*' | sed 's/UAT_ROUTE class=//' | grep -vx -- '-' >> "$rl" 2>/dev/null
     [ -f "$rl" ] && { sort -u "$rl" -o "$rl"; cat "$rl"; } || echo "no UAT_ROUTE lines yet (was the app built with --dart-define=UAT_ROUTES=true and the observer installed?)" ;;
   closesheet)  # close a modal bottom sheet: Scrim tap (measured 8/8), then swipe down the drag handle, then back
     scrim_on() { dump_ui "$UIXML" && [ -n "$(nodes match Scrim 1 0 | head -1)" ]; }
@@ -492,7 +492,7 @@ EOF
     pk="$(resolve_pkg)"
     for _ in 1 2; do
       "${ADB_S[@]}" shell input keyevent 4; sleep 1.5
-      fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
+      fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' 2>/dev/null | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
       [ -n "$pk" ] && [ "$fg" != "$pk" ] && { echo "WARN: back left the app; 'launch' to return" >&2; exit 4; }
       scrim_on || { echo "closed (back)"; exit 0; }
     done
@@ -557,12 +557,12 @@ EOF
   launch)
     p="$(resolve_pkg)"; [ -z "$p" ] && { echo "cannot resolve package; pass -p or add package= to .uat" >&2; exit 2; }
     # 'monkey' silently fails to foreground the app on tested images; resolve the activity and am start it.
-    act="$("${ADB_S[@]}" shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$p" 2>/dev/null | tr -d '\r' | tail -1)"
+    act="$("${ADB_S[@]}" shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$p" 2>/dev/null | tr -d '\r' 2>/dev/null | tail -1)"
     case "$act" in */*) ;; *) echo "no launcher activity for $p (installed?)" >&2; exit 1 ;; esac
     "${ADB_S[@]}" shell am start -n "$act" >/dev/null 2>&1
     for _ in 1 2 3 4 5 6 7 8; do
       sleep 1
-      fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
+      fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' 2>/dev/null | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
       [ "$fg" = "$p" ] && { echo "launched $p"; exit 0; }
     done
     echo "launch requested but foreground is '$fg'" >&2; exit 1 ;;
@@ -591,7 +591,7 @@ EOF
     "$(cd "$(dirname "$0")" && pwd)/bootstrap.sh" --check --quiet 2>/dev/null | sed -E 's/^(bootstrap: )?/bootstrap: /'
     echo "adb:     $ADB"; echo "device:  $SERIAL"; echo "package: $(resolve_pkg)"
     echo "size:    $(screen_size)"
-    fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
+    fg="$("${ADB_S[@]}" shell dumpsys activity activities 2>/dev/null | tr -d '\r' 2>/dev/null | awk '/topResumedActivity|mResumedActivity/ {for(i=1;i<=NF;i++) if ($i ~ /\//) {split($i,a,"/"); print a[1]; exit}}')"
     echo "foreground: $fg"
     echo "host load: $(uptime | sed -E 's/.*averages?: ([0-9.]+).*/\1/') (timings and ANRs are meaningless above ~8)"
     if [ -n "$(resolve_pkg)" ] && [ "$fg" != "$(resolve_pkg)" ]; then

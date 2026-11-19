@@ -22,9 +22,9 @@ void main() {
   });
 
   test('packageVersion matches pubspec.yaml', () {
-    final line = File('pubspec.yaml')
-        .readAsLinesSync()
-        .firstWhere((l) => l.startsWith('version:'));
+    final line = File(
+      'pubspec.yaml',
+    ).readAsLinesSync().firstWhere((l) => l.startsWith('version:'));
     expect(line.split(':').last.trim(), packageVersion);
   });
 
