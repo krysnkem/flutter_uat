@@ -1,0 +1,44 @@
+// flutter-uat route hook. Off unless built with --dart-define=UAT_ROUTES=true (then the code is
+// tree-shaken out of normal builds). Logs one line per screen shown:
+//   UAT_ROUTE class=<ScreenClass> name=<route name or ->
+// `uat.sh routes` reads them from logcat and `uat.sh coverage` counts them exactly.
+// Install: copy this file into lib/, then add `UatRouteObserver()` to the `observers:` list of the
+// GoRouter (and to each StatefulShellBranch(observers: ...) so tab bodies register).
+// The screen class is the first widget under the route whose name ends in Screen or Page
+// (go_router wraps `builder:` results in a Builder, so the page's own child is not the screen).
+import 'package:flutter/widgets.dart';
+
+const bool _uatRoutes = bool.fromEnvironment('UAT_ROUTES');
+final RegExp _screenName = RegExp(r'^[A-Z][A-Za-z0-9]*(Screen|Page)$');
+const Set<String> _notScreens = {'MaterialPage', 'CupertinoPage', 'CustomTransitionPage', 'NoTransitionPage'};
+
+class UatRouteObserver extends NavigatorObserver {
+  void _show(Route<dynamic>? route) {
+    if (!_uatRoutes || route == null) return;
+    final name = route.settings.name ?? '-';
+    // Wait for the route's subtree to exist, then look for the screen widget.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      String? hit;
+      void visit(Element e) {
+        if (hit != null) return;
+        final n = e.widget.runtimeType.toString();
+        if (_screenName.hasMatch(n) && !_notScreens.contains(n)) {
+          hit = n;
+          return;
+        }
+        e.visitChildren(visit);
+      }
+
+      final ctx = route is ModalRoute ? route.subtreeContext : null;
+      if (ctx is Element) visit(ctx);
+      debugPrint('UAT_ROUTE class=${hit ?? '-'} name=$name');
+    });
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _show(route);
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => _show(newRoute);
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _show(previousRoute);
+}

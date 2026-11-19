@@ -1,0 +1,14 @@
+name: Sign in then visit the main tabs (generic example)
+recover: launch
+set EMAIL=user@example.com
+stop
+launch
+waitfor "Welcome" 40
+? taplabel Login --exact
+typein class:EditText --nth 1 ${EMAIL}
+hidekb
+typein class:EditText --nth 2 "example-password"
+hidekb
+taplabel "Sign in" --exact --expect "Home" --wait 15
+taplabel "Settings" --expect "Account" --wait 10
+! assert "Error"

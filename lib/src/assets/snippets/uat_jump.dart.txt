@@ -1,0 +1,44 @@
+// flutter-uat route jump. Off unless built with --dart-define=UAT_ROUTES=true.
+// Polls <cache dir>/uat_cmd every 500 ms; `uat.sh jump /path` writes "go /path" into it via run-as
+// (debuggable builds only). Calls GoRouter.go and logs `UAT_JUMP path=<p> result=ok|error:<msg>`.
+// Install: copy to lib/, call `UatJump.start(yourRouterNavigatorKey);` once in main() before runApp.
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
+
+const bool _uat = bool.fromEnvironment('UAT_ROUTES');
+
+class UatJump {
+  static Timer? _t;
+
+  static void start(GlobalKey<NavigatorState> key) {
+    if (!_uat || _t != null) return;
+    // Android: the app's own cache dir, from the process name (== package id). Elsewhere: systemTemp.
+    String dir = Directory.systemTemp.path;
+    try {
+      final pkg = File('/proc/self/cmdline').readAsStringSync().split('\u0000').first.trim();
+      if (pkg.isNotEmpty && Directory('/data/data/$pkg/cache').existsSync()) dir = '/data/data/$pkg/cache';
+    } catch (_) {}
+    final f = File('$dir/uat_cmd');
+    debugPrint('UAT_JUMP armed file=${f.path}');
+    _t = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      try {
+        if (!f.existsSync()) return;
+        final cmd = f.readAsStringSync().trim();
+        f.deleteSync();
+        if (!cmd.startsWith('go ')) return;
+        final path = cmd.substring(3).trim();
+        final ctx = key.currentContext;
+        if (ctx == null) {
+          debugPrint('UAT_JUMP path=$path result=error:no-context');
+          return;
+        }
+        GoRouter.of(ctx).go(path);
+        debugPrint('UAT_JUMP path=$path result=ok');
+      } catch (e) {
+        debugPrint('UAT_JUMP result=error:$e');
+      }
+    });
+  }
+}
