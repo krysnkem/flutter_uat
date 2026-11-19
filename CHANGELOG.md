@@ -1,8 +1,12 @@
 ## 0.1.4
 
-- Token cost: `install-skill` now installs a short `SKILL.md` (about 1,000 tokens: first use, the loop, commands,
-  exit codes, selectors, flow format, rules) and the complete guide as `REFERENCE.md`. The short guide is
-  estimated at one tenth of the old size (about 10,900 tokens); it has not yet been tested by a cold agent.
+- Token cost: `install-skill` now installs a short `SKILL.md` (about 1,200 tokens: first use, the loop, commands,
+  exit codes, selectors, flow format, rules) and the complete guide as `REFERENCE.md` (about 10,900 tokens).
+- Found by a cold agent that used only the short guide on a prebuilt APK, now fixed:
+  the guide lists the default unsafe terms; says `clear` is denied in flows and how to allow it; says how to use a
+  prebuilt APK; and warns that `--until` in an optional step waits the full time when the target is absent.
+- `repeat --allow-clear` passes the flag to each flow; its per-run progress line now includes the failing step.
+- `doctor` no longer suggests bootstrapping when you only have an APK.
 
 ## 0.1.3
 

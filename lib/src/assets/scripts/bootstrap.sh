@@ -117,7 +117,7 @@ skipval() { [ -f "$UAT" ] && awk -F= -v k="skip.$1" '$1==k {v=$0; sub(/^[^=]*=/,
 # ---- check mode ----------------------------------------------------------------------
 if [ "$MODE" = check ]; then
   if ! grep -q '^d\.' "$UAT" 2>/dev/null; then
-    [ "$QUIET" = 1 ] && echo "bootstrap: not bootstrapped (run: uat.sh bootstrap --write)" || echo "NOT BOOTSTRAPPED: no generated block in $UAT"
+    [ "$QUIET" = 1 ] && echo "bootstrap: not bootstrapped (only needed when you have the project source; ignore for a prebuilt APK)" || echo "NOT BOOTSTRAPPED: no generated block in $UAT"
     exit 3
   fi
   stale=0

@@ -19,6 +19,7 @@ It reads the app's accessibility tree through `adb`: text out, an exit code you 
 3. `-s emulator-5562 build debug --install`. If the build says Gradle is too old for this Flutter,
    rerun with `--sdk /path/to/older/flutter/bin/flutter`.
 4. `launch` (tap "Wait" if a first-run ANR dialog shows), then `doctor` (needs the app in front).
+   Prebuilt APK, no source: skip steps 2-3 and run `install FILE.apk` instead (`doctor` may say "not bootstrapped": ignore).
 
 ## The loop
 `labels` (observe) -> `taplabel "X" --expect "NEXT" --wait 10` (act + verify) -> `waitfor`/`assert` (check).
@@ -59,12 +60,16 @@ The result line counts optional steps that did not pass: a PASS can hide a skipp
 `stop`/`launch`/`waitfor` so flows are independent (the session persists across restarts).
 
 ## Rules
-- Exit 3 = stop and ask. Never add `--force` or rephrase a label to get past a refusal unless a human said so.
+- Exit 3 = stop and ask. Taps on labels containing `log out`, `logout`, `sign out`, `delete account`, `remove account`,
+  `pay now`, `confirm payment` are refused, even in an optional `?` step (more terms: `.uat` `unsafe=`). Never add `--force`
+  or rephrase a label to get past a refusal unless the task owner said logging out (etc.) is part of the test.
 - Test accounts and mock data only; form filling is refused unless `.uat` has `fill.allow=mock`.
 - Wait for calm: host load above ~8 or swap above ~80% makes timings and failures not app findings.
 - Clean up: `build --clean --yes` and `emu delete` what you created. Report which selector rung each tap used,
   mark unverified claims, list what you could not reach.
-- Inside a flow `raw`, `build`, `emu`, nested `flow` are denied. `back` on a root screen leaves the app (exit 4): use `? back`.
+- Inside a flow `raw`, `build`, `emu`, nested `flow` are denied, and so is `clear` (wipes app data and resets a login)
+  unless you pass `--allow-clear` to `flow`/`repeat`. Without it, make the sign-in step optional (`? taplabel Login`).
+  Do not use `--until` in an optional `?` step: when the target is absent it waits the full seconds. `back` on a root screen leaves the app (exit 4): use `? back`.
 
 ## More
 `REFERENCE.md`: every command, selector pitfalls, bootstrap/build/emulator details, hooks and sweep, measured

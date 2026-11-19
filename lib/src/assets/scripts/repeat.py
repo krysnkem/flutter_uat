@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """flutter-uat repeat: run each flow N times and report pass rate, timing and the step that failed.
 
-  uat.sh [-s SERIAL] [-p PKG] repeat N FLOW [FLOW...] [--report FILE] [--calm LOAD]
+  uat.sh [-s SERIAL] [-p PKG] repeat N FLOW [FLOW...] [--report FILE] [--calm LOAD] [--allow-clear]
 
 Waits for host load below --calm (default 8) before every run, because above that the timings and the
 failures are not app findings. One row per flow; a failing run's first failed step is quoted.
@@ -15,12 +15,13 @@ a = sys.argv[1:]
 if len(a) < 2 or not a[0].isdigit():
     print(__doc__); sys.exit(2)
 n, rest = int(a[0]), a[1:]
-report, calm = "", 8.0
+report, calm, allow_clear = "", 8.0, False
 flows = []
 i = 0
 while i < len(rest):
     if rest[i] == "--report": report = rest[i + 1]; i += 2
     elif rest[i] == "--calm": calm = float(rest[i + 1]); i += 2
+    elif rest[i] == "--allow-clear": allow_clear = True; i += 1
     else: flows.append(rest[i]); i += 1
 
 
@@ -62,7 +63,7 @@ for f in flows:
     for k in range(n):
         wait_calm()
         t0 = time.time()
-        r = subprocess.run([U, "flow", f, "--report", "/dev/null"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        r = subprocess.run([U, "flow", f, "--report", "/dev/null"] + (["--allow-clear"] if allow_clear else []), capture_output=True, text=True, stdin=subprocess.DEVNULL)
         dt = time.time() - t0
         out = r.stdout
         ok = r.returncode == 0
@@ -70,7 +71,7 @@ for f in flows:
         if not ok:
             m = re.search(r"^\| (\d+) \| `([^`]*)` \| (?:FAIL|ERROR) \| ([^|]*)\|", out, re.M)
             bad = f"step {m.group(1)} `{m.group(2)[:50]}`: {m.group(3).strip()[:60]}" if m else "no report line"
-        print(f"[{os.path.basename(f)} run {k + 1}/{n}] {'PASS' if ok else 'FAIL'} {dt:.0f}s", file=sys.stderr, flush=True)
+        print(f"[{os.path.basename(f)} run {k + 1}/{n}] {'PASS' if ok else 'FAIL'} {dt:.0f}s" + (f": {bad}" if bad else ""), file=sys.stderr, flush=True)
         res.append((ok, dt, bad))
     passed = sum(1 for r in res if r[0])
     allok &= passed == n
