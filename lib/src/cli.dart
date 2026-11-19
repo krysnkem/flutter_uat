@@ -6,7 +6,7 @@ import 'assets.dart';
 
 /// The version printed by `flutter_uat version`; kept equal to `pubspec.yaml`
 /// (a test enforces it).
-const packageVersion = '0.1.3';
+const packageVersion = '0.1.4';
 
 const _usage = '''
 flutter_uat $packageVersion: drive and verify Flutter apps on Android by label.
@@ -20,7 +20,8 @@ Handled here:
                                   copy the optional app-side hooks (route observer,
                                   route jump) into a Flutter project (default D=lib/uat)
   install-skill [--dir D] [--force]
-                                  copy SKILL.md, CONTRACT.md and SLA.md for an AI agent
+                                  copy the short guide (SKILL.md), REFERENCE.md, CONTRACT.md
+                                  and SLA.md for an AI agent
                                   (default D=~/.claude/skills/flutter-uat)
   help                            this text
 
@@ -177,6 +178,7 @@ Future<int> _installSkill(
       'SKILL.md': p.join(skill, 'SKILL.md'),
       'CONTRACT.md': p.join(skill, 'CONTRACT.md'),
       'SLA.md': p.join(skill, 'SLA.md'),
+      'REFERENCE.md': p.join(skill, 'REFERENCE.md'),
     },
     Directory(a.dir ?? p.join(home, '.claude', 'skills', 'flutter-uat')),
     a.force,

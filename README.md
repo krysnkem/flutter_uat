@@ -90,12 +90,13 @@ cannot make it tap the wrong place the way remembered coordinates can.
 
 ```
 dart pub global activate flutter_uat
-flutter_uat install-skill        # writes SKILL.md, CONTRACT.md, SLA.md to ~/.claude/skills/flutter-uat/
+flutter_uat install-skill        # writes SKILL.md (short), REFERENCE.md, CONTRACT.md, SLA.md to ~/.claude/skills/flutter-uat/
 ```
 
-Then **read the installed `SKILL.md`**. It is the full operating guide: every command, the working rules that
-prevent false bugs, how to plan a flow, and what has been measured. This README is the short version. For a
-non-Claude delegate (Codex and others) read `CONTRACT.md` too: it states the sandbox the delegate needs.
+Then **read the installed `SKILL.md`**: a short guide (about 1,000 tokens) with the commands, exit codes, the
+loop and the rules. `REFERENCE.md` is the complete reference (every command, measured behaviours, pitfalls): open
+it only when you need detail. This README is the same story with diagrams. For a non-Claude delegate (Codex and
+others) read `CONTRACT.md` too: it states the sandbox the delegate needs.
 
 First use, in this order (each step needs the one before it):
 
@@ -304,7 +305,7 @@ Optional hooks let the app report each screen it shows, and let the tool jump st
   started, and cleans up only what it created.
 - **Works on release builds** for everything except route jumping.
 - **Tested.** An offline suite replays fabricated screens with no device (66 checks), plus Dart tests, and the
-  guide was checked by agents who had only the package.
+  full guide was checked by agents who had only the package.
 
 ---
 

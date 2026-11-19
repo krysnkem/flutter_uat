@@ -114,6 +114,9 @@ void main() {
     );
     expect(File(p.join(dest, 'CONTRACT.md')).existsSync(), isTrue);
     expect(File(p.join(dest, 'SLA.md')).existsSync(), isTrue);
+    expect(File(p.join(dest, 'REFERENCE.md')).existsSync(), isTrue);
+    // the short guide must stay short: about 1,000-1,500 tokens (4 chars per token)
+    expect(File(p.join(dest, 'SKILL.md')).lengthSync(), lessThan(6500));
   });
 
   test('shipped text carries no personal paths or app names', () async {

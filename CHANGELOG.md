@@ -1,3 +1,9 @@
+## 0.1.4
+
+- Token cost: `install-skill` now installs a short `SKILL.md` (about 1,000 tokens: first use, the loop, commands,
+  exit codes, selectors, flow format, rules) and the complete guide as `REFERENCE.md`. The short guide is
+  estimated at one tenth of the old size (about 10,900 tokens); it has not yet been tested by a cold agent.
+
 ## 0.1.3
 
 - Documentation: a plainer README with flow diagrams (how one tap works, the agent loop, selector fallback,
