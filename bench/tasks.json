@@ -1,0 +1,26 @@
+{
+  "app": {
+    "package": "com.koins.savings.koins_savings_app",
+    "note": "prebuilt release APK with a local mock login; the app is signed in and resting on the Dashboard before every run"
+  },
+  "tasks": [
+    {
+      "id": "t1_dashboard",
+      "title": "Read two values on the first screen",
+      "prompt": "In the app, find the Total Savings amount and the monthly amount of the 'House Savings Plan' on the Dashboard.",
+      "expect_all": ["550,000", "250,000"]
+    },
+    {
+      "id": "t2_explore",
+      "title": "Navigate to a tab and read a value",
+      "prompt": "Open the Explore tab and find the interest rate (p.a.) of the Fixed Deposit product.",
+      "expect_all": ["18%"]
+    },
+    {
+      "id": "t3_form_options",
+      "title": "Open a form and read a dropdown",
+      "prompt": "Open Create Savings, open the Product Type dropdown, and list every option shown with its percentage. Do not save or submit anything.",
+      "expect_all": ["Target Savings", "Fixed Deposit", "Education Savings", "Vacation Savings", "12%", "18%", "10%", "8%"]
+    }
+  ]
+}

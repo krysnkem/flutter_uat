@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""flutter_uat benchmark runner: one headless Claude run per (arm, task, run), measured identically.
+
+  python3 bench/run.py --arm short --task t1_dashboard --runs 3 --serial emulator-5568 [--out results.jsonl]
+
+Each run: reset the app (stop, launch, wait for the Dashboard), call `claude -p` with a fixed model, a fixed
+tool set (Bash, limited to `flutter_uat` commands; everything else is denied, no bypass of permissions), no user settings, no skills, no MCP servers, and the arm's guide appended to the system
+prompt. The agent's last line must be `ANSWER: ...`; success = every expected substring is in it (case-insensitive).
+Recorded per run: success, cost, turns, duration, token usage from the JSON result. Nothing here trusts the agent's
+own claim of success.
+"""
+import argparse, json, os, re, subprocess, sys, time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ap = argparse.ArgumentParser()
+ap.add_argument("--arm", required=True)
+ap.add_argument("--task", required=True)
+ap.add_argument("--runs", type=int, default=1)
+ap.add_argument("--serial", default="emulator-5568")
+ap.add_argument("--model", default="claude-sonnet-5-5")
+ap.add_argument("--max-turns", type=int, default=40)
+ap.add_argument("--max-budget", default="1.50")
+ap.add_argument("--out", default=os.path.join(HERE, "results.jsonl"))
+ap.add_argument("--assets", default=os.path.join(os.path.dirname(HERE), "lib", "src", "assets"))
+A = ap.parse_args()
+
+cfg = json.load(open(os.path.join(HERE, "tasks.json")))
+task = next(t for t in cfg["tasks"] if t["id"] == A.task)
+pkg = cfg["app"]["package"]
+guide_file = os.path.join(HERE, "arms", f"{A.arm}.md")
+if not os.path.isfile(guide_file):
+    sys.exit(f"no such arm: {guide_file}")
+
+env = dict(os.environ)
+env.update({"PATH": os.path.expanduser("~/.pub-cache/bin") + ":" + env["PATH"], "FLUTTER_UAT_ASSETS": A.assets,
+            "ANDROID_SERIAL": A.serial, "UAT_PACKAGE": pkg})
+
+
+def fu(*args, timeout=90):
+    return subprocess.run(["flutter_uat", *args], env=env, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
+
+
+def reset_app():
+    fu("stop"); time.sleep(2); fu("launch")
+    for _ in range(10):
+        time.sleep(3)
+        if "Total Savings" in fu("labels").stdout:
+            return True
+    return False
+
+
+def load():
+    out = subprocess.run("uptime", capture_output=True, text=True).stdout
+    m = re.search(r"averages?: ([0-9.]+)", out)
+    return float(m.group(1)) if m else -1
+
+
+PROMPT = (
+    "A Flutter app is installed and signed in on the Android emulator "
+    f"{A.serial} (package {pkg}). Use the flutter_uat command-line tool described in your instructions to look at the app. "
+    "The device and package are already set in the environment, so you do not need -s or -p. Do not create, stop or delete "
+    "emulators, do not modify any files, and do not submit or save anything in the app.\n\n"
+    f"TASK: {task['prompt']}\n\n"
+    "When you are done, end your reply with one line: `ANSWER: <what you found>`.")
+
+os.makedirs(os.path.dirname(os.path.abspath(A.out)), exist_ok=True)
+for k in range(A.runs):
+    if not reset_app():
+        print(f"[{A.arm} {A.task} run {k+1}] could not reset the app; skipping", file=sys.stderr); continue
+    t0 = time.time(); l0 = load()
+    cmd = ["claude", "-p", PROMPT, "--output-format", "json", "--model", A.model, "--max-turns", str(A.max_turns),
+           "--max-budget-usd", A.max_budget, "--no-session-persistence", "--disable-slash-commands",
+           "--setting-sources", "project", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+           "--tools", "Bash", "--permission-mode", "dontAsk", "--allowedTools", "Bash(flutter_uat:*)",
+           "--append-system-prompt-file", guide_file]
+    r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=1500, cwd="/private/tmp", stdin=subprocess.DEVNULL)
+    wall = time.time() - t0
+    try:
+        j = json.loads(r.stdout)
+    except Exception:
+        j = {"is_error": True, "result": (r.stdout + r.stderr)[-300:]}
+    res = j.get("result", "") or ""
+    m = re.findall(r"ANSWER:\s*(.*)", res)
+    ans = m[-1] if m else ""
+    low = res.lower() if not ans else ans.lower()
+    ok = bool(ans) and all(e.lower() in low for e in task["expect_all"])
+    u = j.get("usage", {}) or {}
+    rec = {"arm": A.arm, "task": A.task, "run": k + 1, "success": ok, "answer": ans[:200],
+           "cost_usd": j.get("total_cost_usd"), "turns": j.get("num_turns"),
+           "api_ms": j.get("duration_api_ms"), "wall_s": round(wall, 1),
+           "input": u.get("input_tokens"), "cache_read": u.get("cache_read_input_tokens"),
+           "cache_create": u.get("cache_creation_input_tokens"), "output": u.get("output_tokens"),
+           "error": bool(j.get("is_error")), "load": l0, "model": A.model, "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+    open(A.out, "a").write(json.dumps(rec) + "\n")
+    print(json.dumps(rec), flush=True)
