@@ -42,10 +42,13 @@ def fu(*args, timeout=90):
 
 def reset_app():
     fu("stop"); time.sleep(2); fu("launch")
-    for _ in range(10):
+    for _ in range(14):
         time.sleep(3)
-        if "Total Savings" in fu("labels").stdout:
+        lab = fu("labels").stdout
+        if "Total Savings" in lab:
             return True
+        if "Welcome Back" in lab:   # an earlier run signed out: sign back in (mock login) so every run starts alike
+            fu("taplabel", "Login", "--exact")
     return False
 
 
@@ -80,10 +83,16 @@ for k in range(A.runs):
     except Exception:
         j = {"is_error": True, "result": (r.stdout + r.stderr)[-300:]}
     res = j.get("result", "") or ""
+    scr = fu("labels").stdout   # end state, read before the next reset
     m = re.findall(r"ANSWER:\s*(.*)", res)
     ans = m[-1] if m else ""
     low = res.lower() if not ans else ans.lower()
-    ok = bool(ans) and all(e.lower() in low for e in task["expect_all"])
+    ok = bool(ans) or bool(task.get("expect_any"))
+    ok = ok and all(e.lower() in low for e in task.get("expect_all", []))
+    if task.get("expect_any"):
+        ok = ok and any(e.lower() in (res.lower()) for e in task["expect_any"])
+    ok = ok and all(e.lower() in scr.lower() for e in task.get("expect_screen_after", []))
+    ok = ok and not any(e.lower() in scr.lower() for e in task.get("forbid_screen_after", []))
     u = j.get("usage", {}) or {}
     rec = {"arm": A.arm, "task": A.task, "run": k + 1, "success": ok, "answer": ans[:200],
            "cost_usd": j.get("total_cost_usd"), "turns": j.get("num_turns"),
