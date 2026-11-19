@@ -3,7 +3,8 @@ description: >-
   Drive and verify Flutter apps on Android emulators by label instead of pixels:
   read the semantics tree, tap, type and assert by label, run flows, sweep routes.
 version: 0.1.0
-# repository: add the public repository URL before publishing.
+repository: https://github.com/krysnkem/flutter_uat
+issue_tracker: https://github.com/krysnkem/flutter_uat/issues
 topics:
   - testing
   - flutter
