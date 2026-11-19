@@ -6,7 +6,7 @@ import 'assets.dart';
 
 /// The version printed by `flutter_uat version`; kept equal to `pubspec.yaml`
 /// (a test enforces it).
-const packageVersion = '0.1.2';
+const packageVersion = '0.1.3';
 
 const _usage = '''
 flutter_uat $packageVersion: drive and verify Flutter apps on Android by label.

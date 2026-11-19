@@ -1,3 +1,9 @@
+## 0.1.3
+
+- Documentation: a plainer README with flow diagrams (how one tap works, the agent loop, selector fallback,
+  flows and repeat runs, sweep, safety gates), a full capability table and a strengths section.
+- Author and portfolio link added (README, NOTICE, pubspec homepage). No code changes.
+
 ## 0.1.2
 
 - Acknowledgement: flutter_uat was inspired by David Adegoke (Cake Wallet); added an Acknowledgements
