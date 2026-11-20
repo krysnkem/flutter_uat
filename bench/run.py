@@ -21,12 +21,15 @@ ap.add_argument("--model", default="claude-sonnet-5-5")
 ap.add_argument("--max-turns", type=int, default=40)
 ap.add_argument("--max-budget", default="1.50")
 ap.add_argument("--out", default=os.path.join(HERE, "results.jsonl"))
+ap.add_argument("--tasks", default=os.path.join(HERE, "tasks.json"))
 ap.add_argument("--assets", default=os.path.join(os.path.dirname(HERE), "lib", "src", "assets"))
 A = ap.parse_args()
 
-cfg = json.load(open(os.path.join(HERE, "tasks.json")))
+cfg = json.load(open(A.tasks))
 task = next(t for t in cfg["tasks"] if t["id"] == A.task)
 pkg = cfg["app"]["package"]
+READY = cfg["app"].get("ready_label", "Total Savings")
+LOGIN_FLOW = cfg["app"].get("login_flow")
 guide_file = os.path.join(HERE, "arms", f"{A.arm}.md")
 if not os.path.isfile(guide_file):
     sys.exit(f"no such arm: {guide_file}")
@@ -45,10 +48,13 @@ def reset_app():
     for _ in range(14):
         time.sleep(3)
         lab = fu("labels").stdout
-        if "Total Savings" in lab:
+        if READY in lab:
             return True
         if "Welcome Back" in lab:   # an earlier run signed out: sign back in (mock login) so every run starts alike
-            fu("taplabel", "Login", "--exact")
+            if LOGIN_FLOW:
+                fu("flow", os.path.join(os.path.dirname(HERE), LOGIN_FLOW), "--quiet", "--report", "/dev/null", timeout=240)
+            else:
+                fu("taplabel", "Login", "--exact")
     return False
 
 
